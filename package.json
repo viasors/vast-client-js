@@ -13,7 +13,7 @@
     "scripts":
     {
         "test": "mocha --compilers coffee:coffee-script/register --reporter spec test/*.coffee",
-        "bundle": "browserify -s DMVAST -c 'coffee -scb' --extension=.coffee src/index.coffee -o vast-client.js",
+        "bundle": "browserify -s DMVAST -t coffeeify src/index.coffee > vast-client.js",
         "postinstall": "coffee --compile --output dist/ src/"
     },
     "devDependencies":
@@ -25,6 +25,7 @@
     "dependencies":
     {
         "coffee-script": "~1.7.1",
-        "browserify": "4.2.1"
+        "browserify": "4.2.1",
+		"coffeeify": "2.14.2"
     }
 }

@@ -1,5 +1,5 @@
-xhr = require './urlhandlers/xmlhttprequest'
-flash = require './urlhandlers/flash'
+xhr = require './urlhandlers/xmlhttprequest.coffee'
+flash = require './urlhandlers/flash.coffee'
 
 class URLHandler
     @get: (url, options, cb) ->

@@ -1,11 +1,13 @@
-URLHandler = require './urlhandler'
-VASTResponse = require './response'
-VASTAd = require './ad'
-VASTUtil = require './util'
-VASTCreativeLinear = require('./creative').VASTCreativeLinear
-VASTCreativeCompanion = require('./creative').VASTCreativeCompanion
-VASTMediaFile = require './mediafile'
-VASTCompanionAd = require './companionad'
+URLHandler = require './urlhandler.coffee'
+VASTResponse = require './response.coffee'
+VASTAd = require './ad.coffee'
+VASTUtil = require './util.coffee'
+VASTCreativeLinear = require('./creative.coffee').VASTCreativeLinear
+VASTCreativeNonLinear = require('./creative.coffee').VASTCreativeNonLinear
+VASTCreativeCompanion = require('./creative.coffee').VASTCreativeCompanion
+VASTMediaFile = require './mediafile.coffee'
+VASTCompanionAd = require './companionad.coffee'
+VASTNonLinearAd = require './nonlinearad.coffee'
 EventEmitter = require('events').EventEmitter
 
 class VASTParser
@@ -194,9 +196,26 @@ class VASTParser
     @parseInLineElement: (inLineElement) ->
         ad = new VASTAd()
         ad.id = inLineElement.id
-
+        
         for node in inLineElement.childNodes
             switch node.nodeName
+                when "AdTitle"
+                    ad.adTitle = @parseNodeText(node)
+                    
+                when "AdSystem"
+                    ad.adSystem = @parseNodeText(node)
+                
+                when "Description"
+                    ad.description = @parseNodeText(node)
+                
+                when "Advertiser"
+                    ad.advertiser = @parseNodeText(node)
+            
+                when "Extensions"
+                    for extensionElement in node.childNodes
+                        if extensionElement.nodeType != 3
+                            ad.extensions[extensionElement.nodeName] = @parseNodeText(extensionElement)
+                
                 when "Error"
                     ad.errorURLTemplates.push (@parseNodeText node)
 
@@ -211,14 +230,16 @@ class VASTParser
                                     creative = @parseCreativeLinearElement creativeTypeElement
                                     if creative
                                         ad.creatives.push creative
-                                #when "NonLinearAds"
-                                    # TODO
+                                when "NonLinearAds"
+                                    creative = @parseCreativeNonLinearElement creativeTypeElement
+                                    if creative
+                                        ad.creatives.push creative
                                 when "CompanionAds"
                                     creative = @parseCompanionAd creativeTypeElement
                                     if creative
                                         ad.creatives.push creative
 
-        return ad
+        return ad   
 
     @parseCreativeLinearElement: (creativeElement) ->
         creative = new VASTCreativeLinear()
@@ -294,6 +315,32 @@ class VASTParser
                 creative.mediaFiles.push mediaFile
 
         return creative
+        
+    @parseCreativeNonLinearElement: (creativeElement) ->
+        creative = new VASTCreativeNonLinear()
+        
+        for nonLinearResource in @childsByName(creativeElement, "NonLinear")
+            nonLinearAd = new VASTNonLinearAd()
+            nonLinearAd.id = nonLinearResource.getAttribute("id") or null
+            nonLinearAd.width = nonLinearResource.getAttribute("width")
+            nonLinearAd.height = nonLinearResource.getAttribute("height")
+            nonLinearAd.expandedWidth = nonLinearResource.getAttribute("expandedWidth") or null
+            nonLinearAd.expandedHeight = nonLinearResource.getAttribute("expandedHeight") or null
+            nonLinearAd.minSuggestedDuration = nonLinearResource.getAttribute("minSuggestedDuration") or null
+            for htmlElement in @childsByName(nonLinearResource, "HTMLResource")
+                nonLinearAd.type = htmlElement.getAttribute("creativeType") or 'text/html'
+                nonLinearAd.htmlResource = @parseNodeText(htmlElement)
+            for iframeElement in @childsByName(nonLinearResource, "IFrameResource")
+                nonLinearAd.type = iframeElement.getAttribute("creativeType") or 0
+                nonLinearAd.iframeResource = @parseNodeText(iframeElement)
+            for staticElement in @childsByName(nonLinearResource, "StaticResource")
+                nonLinearAd.type = staticElement.getAttribute("creativeType") or 0
+                nonLinearAd.staticResource = @parseNodeText(staticElement)
+            nonLinearAd.nonLinearClickThroughURLTemplate = @parseNodeText(@childByName(nonLinearResource, "NonLinearClickThrough"))
+            creative.variations.push nonLinearAd
+        
+        # TODO /TrackingEvents parsing under the 'NonLinearAds' node (See VAST_v3.0 page 68)
+        return creative
 
     @parseCompanionAd: (creativeElement) ->
         creative = new VASTCreativeCompanion()
@@ -303,6 +350,8 @@ class VASTParser
             companionAd.id = companionResource.getAttribute("id") or null
             companionAd.width = companionResource.getAttribute("width")
             companionAd.height = companionResource.getAttribute("height")
+            companionAd.assetWidth = companionResource.getAttribute("assetWidth")
+            companionAd.assetHeight = companionResource.getAttribute("assetHeight")
             for htmlElement in @childsByName(companionResource, "HTMLResource")
                 companionAd.type = htmlElement.getAttribute("creativeType") or 'text/html'
                 companionAd.htmlResource = @parseNodeText(htmlElement)
@@ -320,6 +369,10 @@ class VASTParser
                         companionAd.trackingEvents[eventName] ?= []
                         companionAd.trackingEvents[eventName].push trackingURLTemplate
             companionAd.companionClickThroughURLTemplate = @parseNodeText(@childByName(companionResource, "CompanionClickThrough"))
+            #xmlEncoded=true not implemented yet
+            adParamsElement = @childByName(companionResource, "AdParameters")
+            if adParamsElement?
+                companionAd.adParameters = @parseNodeText(adParamsElement)
             creative.variations.push companionAd
 
         return creative
