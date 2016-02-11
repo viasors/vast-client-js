@@ -1,6 +1,8 @@
 VASTClient = require('./client.coffee')
 VASTUtil = require('./util.coffee')
 VASTCreativeLinear = require('./creative.coffee').VASTCreativeLinear
+VASTCreativeNonLinear = require('./creative.coffee').VASTCreativeNonLinear
+VASTCreativeCompanion = require('./creative.coffee').VASTCreativeCompanion
 EventEmitter = require('events').EventEmitter
 
 class VASTTracker extends EventEmitter
@@ -30,6 +32,8 @@ class VASTTracker extends EventEmitter
         else
             @skipDelay = -1
             @linear = no
+            @clickThroughURLTemplate = @creative.nonLinearClickThroughURLTemplate ? @creative.companionClickThroughURLTemplate
+            @clickTrackingURLTemplates = @creative.nonLinearClickTrackingURLTemplates ? @creative.companionClickTrackingURLTemplates
 
         @on 'start', ->
             VASTClient.lastSuccessfullAd = +new Date()
@@ -132,7 +136,7 @@ class VASTTracker extends EventEmitter
             clickThroughURL = VASTUtil.resolveURLTemplates([@clickThroughURLTemplate], variables)[0]
 
             @emit "clickthrough", clickThroughURL
-
+    
     track: (eventName, once=no) ->
 
         # closeLinear event was introduced in VAST 3.0
