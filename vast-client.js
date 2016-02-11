@@ -428,6 +428,7 @@ VASTCompanionAd = (function() {
     this.htmlResource = null;
     this.iframeResource = null;
     this.companionClickThroughURLTemplate = null;
+    this.companionClickTrackingURLTemplates = [];
     this.trackingEvents = {};
     this.adParameters = null;
   }
@@ -478,7 +479,6 @@ VASTCreativeNonLinear = (function(superClass) {
   function VASTCreativeNonLinear() {
     this.type = "nonLinear";
     this.variations = [];
-    this.videoClickTrackingURLTemplates = [];
   }
 
   return VASTCreativeNonLinear;
@@ -491,7 +491,6 @@ VASTCreativeCompanion = (function(superClass) {
   function VASTCreativeCompanion() {
     this.type = "companion";
     this.variations = [];
-    this.videoClickTrackingURLTemplates = [];
   }
 
   return VASTCreativeCompanion;
@@ -556,6 +555,8 @@ VASTNonLinearAd = (function() {
     this.htmlResource = null;
     this.iframeResource = null;
     this.nonLinearClickThroughURLTemplate = null;
+    this.nonLinearClickTrackingURLTemplates = [];
+    this.trackingEvents = {};
     this.minSuggestedDuration = null;
   }
 
@@ -1043,7 +1044,7 @@ VASTParser = (function() {
   };
 
   VASTParser.parseCreativeNonLinearElement = function(creativeElement) {
-    var creative, htmlElement, i, iframeElement, j, k, l, len, len1, len2, len3, nonLinearAd, nonLinearResource, ref, ref1, ref2, ref3, staticElement;
+    var base, clickTrackingElement, creative, eventName, htmlElement, i, iframeElement, j, k, l, len, len1, len2, len3, len4, len5, len6, m, n, nonLinearAd, nonLinearResource, o, ref, ref1, ref2, ref3, ref4, ref5, ref6, staticElement, trackingElement, trackingEventsElement, trackingURLTemplate;
     creative = new VASTCreativeNonLinear();
     ref = this.childsByName(creativeElement, "NonLinear");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -1074,13 +1075,34 @@ VASTParser = (function() {
         nonLinearAd.staticResource = this.parseNodeText(staticElement);
       }
       nonLinearAd.nonLinearClickThroughURLTemplate = this.parseNodeText(this.childByName(nonLinearResource, "NonLinearClickThrough"));
+      ref4 = this.childsByName(nonLinearResource, "NonLinearClickTracking");
+      for (m = 0, len4 = ref4.length; m < len4; m++) {
+        clickTrackingElement = ref4[m];
+        nonLinearAd.nonLinearClickTrackingURLTemplates.push(this.parseNodeText(clickTrackingElement));
+      }
+      ref5 = this.childsByName(creativeElement, "TrackingEvents");
+      for (n = 0, len5 = ref5.length; n < len5; n++) {
+        trackingEventsElement = ref5[n];
+        ref6 = this.childsByName(trackingEventsElement, "Tracking");
+        for (o = 0, len6 = ref6.length; o < len6; o++) {
+          trackingElement = ref6[o];
+          eventName = trackingElement.getAttribute("event");
+          trackingURLTemplate = this.parseNodeText(trackingElement);
+          if ((eventName != null) && (trackingURLTemplate != null)) {
+            if ((base = nonLinearAd.trackingEvents)[eventName] == null) {
+              base[eventName] = [];
+            }
+            nonLinearAd.trackingEvents[eventName].push(trackingURLTemplate);
+          }
+        }
+      }
       creative.variations.push(nonLinearAd);
     }
     return creative;
   };
 
   VASTParser.parseCompanionAd = function(creativeElement) {
-    var adParamsElement, base, companionAd, companionResource, creative, eventName, htmlElement, i, iframeElement, j, k, l, len, len1, len2, len3, len4, len5, m, n, ref, ref1, ref2, ref3, ref4, ref5, staticElement, trackingElement, trackingEventsElement, trackingURLTemplate;
+    var adParamsElement, base, clickTrackingElement, companionAd, companionResource, creative, eventName, htmlElement, i, iframeElement, j, k, l, len, len1, len2, len3, len4, len5, len6, m, n, o, ref, ref1, ref2, ref3, ref4, ref5, ref6, staticElement, trackingElement, trackingEventsElement, trackingURLTemplate;
     creative = new VASTCreativeCompanion();
     ref = this.childsByName(creativeElement, "Companion");
     for (i = 0, len = ref.length; i < len; i++) {
@@ -1126,6 +1148,11 @@ VASTParser = (function() {
         }
       }
       companionAd.companionClickThroughURLTemplate = this.parseNodeText(this.childByName(companionResource, "CompanionClickThrough"));
+      ref6 = this.childsByName(companionResource, "CompanionClickTracking");
+      for (o = 0, len6 = ref6.length; o < len6; o++) {
+        clickTrackingElement = ref6[o];
+        companionAd.companionClickTrackingURLTemplates.push(this.parseNodeText(clickTrackingElement));
+      }
       adParamsElement = this.childByName(companionResource, "AdParameters");
       if (adParamsElement != null) {
         companionAd.adParameters = this.parseNodeText(adParamsElement);
@@ -1185,7 +1212,7 @@ module.exports = VASTResponse;
 
 
 },{}],11:[function(_dereq_,module,exports){
-var EventEmitter, VASTClient, VASTCreativeLinear, VASTTracker, VASTUtil,
+var EventEmitter, VASTClient, VASTCreativeCompanion, VASTCreativeLinear, VASTCreativeNonLinear, VASTTracker, VASTUtil,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
 
@@ -1195,13 +1222,17 @@ VASTUtil = _dereq_('./util.coffee');
 
 VASTCreativeLinear = _dereq_('./creative.coffee').VASTCreativeLinear;
 
+VASTCreativeNonLinear = _dereq_('./creative.coffee').VASTCreativeNonLinear;
+
+VASTCreativeCompanion = _dereq_('./creative.coffee').VASTCreativeCompanion;
+
 EventEmitter = _dereq_('events').EventEmitter;
 
 VASTTracker = (function(superClass) {
   extend(VASTTracker, superClass);
 
   function VASTTracker(ad, creative) {
-    var eventName, events, ref;
+    var eventName, events, ref, ref1, ref2;
     this.ad = ad;
     this.creative = creative;
     this.muted = false;
@@ -1224,6 +1255,8 @@ VASTTracker = (function(superClass) {
     } else {
       this.skipDelay = -1;
       this.linear = false;
+      this.clickThroughURLTemplate = (ref1 = this.creative.nonLinearClickThroughURLTemplate) != null ? ref1 : this.creative.companionClickThroughURLTemplate;
+      this.clickTrackingURLTemplates = (ref2 = this.creative.nonLinearClickTrackingURLTemplates) != null ? ref2 : this.creative.companionClickTrackingURLTemplates;
     }
     this.on('start', function() {
       VASTClient.lastSuccessfullAd = +new Date();

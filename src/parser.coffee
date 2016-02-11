@@ -337,9 +337,18 @@ class VASTParser
                 nonLinearAd.type = staticElement.getAttribute("creativeType") or 0
                 nonLinearAd.staticResource = @parseNodeText(staticElement)
             nonLinearAd.nonLinearClickThroughURLTemplate = @parseNodeText(@childByName(nonLinearResource, "NonLinearClickThrough"))
+            for clickTrackingElement in @childsByName(nonLinearResource, "NonLinearClickTracking")
+                nonLinearAd.nonLinearClickTrackingURLTemplates.push @parseNodeText(clickTrackingElement)
+            # /TrackingEvents parsing under the 'NonLinearAds' node (See VAST_v3.0 page 68)
+            for trackingEventsElement in @childsByName(creativeElement, "TrackingEvents")
+                for trackingElement in @childsByName(trackingEventsElement, "Tracking")
+                    eventName = trackingElement.getAttribute("event")
+                    trackingURLTemplate = @parseNodeText(trackingElement)
+                    if eventName? and trackingURLTemplate?
+                        nonLinearAd.trackingEvents[eventName] ?= []
+                        nonLinearAd.trackingEvents[eventName].push trackingURLTemplate
             creative.variations.push nonLinearAd
         
-        # TODO /TrackingEvents parsing under the 'NonLinearAds' node (See VAST_v3.0 page 68)
         return creative
 
     @parseCompanionAd: (creativeElement) ->
@@ -369,6 +378,9 @@ class VASTParser
                         companionAd.trackingEvents[eventName] ?= []
                         companionAd.trackingEvents[eventName].push trackingURLTemplate
             companionAd.companionClickThroughURLTemplate = @parseNodeText(@childByName(companionResource, "CompanionClickThrough"))
+            for clickTrackingElement in @childsByName(companionResource, "CompanionClickTracking")
+                companionAd.companionClickTrackingURLTemplates.push @parseNodeText(clickTrackingElement)
+            
             #xmlEncoded=true not implemented yet
             adParamsElement = @childByName(companionResource, "AdParameters")
             if adParamsElement?

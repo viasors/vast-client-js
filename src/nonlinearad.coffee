@@ -10,6 +10,8 @@ class VASTNonLinearAd
         @htmlResource = null
         @iframeResource = null
         @nonLinearClickThroughURLTemplate = null
+        @nonLinearClickTrackingURLTemplates = []
+        @trackingEvents = {}
         @minSuggestedDuration = null
 
 module.exports = VASTNonLinearAd

@@ -10,6 +10,7 @@ class VASTCompanionAd
         @htmlResource = null
         @iframeResource = null
         @companionClickThroughURLTemplate = null
+        @companionClickTrackingURLTemplates = []
         @trackingEvents = {}
         @adParameters = null
 
